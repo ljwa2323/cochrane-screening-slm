@@ -97,7 +97,7 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build real_test*.jsonl from CSV + reason progress"
+        description="Build heldout_reviews*.jsonl from CSV + reason progress"
     )
     parser.add_argument("--csv", type=str, required=True)
     parser.add_argument("--progress", type=str, required=True)

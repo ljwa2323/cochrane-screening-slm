@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Background launcher for real_test1/2/3 reason generation + jsonl build.
+# Background launcher for heldout_reviews1/2/3 reason generation + jsonl build.
 # Mapping:
-#   real_test1.jsonl <- 20240827_random_test_set.csv
-#   real_test2.jsonl <- 20240827_HIV_test_set.csv
-#   real_test3.jsonl <- 20240827_heart_test_set.csv
+#   heldout_reviews1.jsonl <- 20240827_random_test_set.csv
+#   heldout_reviews2.jsonl <- 20240827_HIV_test_set.csv
+#   heldout_reviews3.jsonl <- 20240827_heart_test_set.csv
 #
 # Usage:
-#   bash start_real_tests_reason_bg.sh
-#   bash start_real_tests_reason_bg.sh --rps 10 --concurrency 4
+#   bash start_heldout_reviews_reason_bg.sh
+#   bash start_heldout_reviews_reason_bg.sh --rps 10 --concurrency 4
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-OUT_DIR="${PROJECT_DIR}/reason_gen_real_tests"
+OUT_DIR="${PROJECT_DIR}/reason_gen_heldout_reviews"
 LOG_DIR="${OUT_DIR}/logs"
 PID_FILE="${OUT_DIR}/pipeline.pid"
-SCRIPT="${SCRIPT_DIR}/run_real_tests_reason_pipeline.py"
+SCRIPT="${SCRIPT_DIR}/run_heldout_reviews_reason_pipeline.py"
 
 mkdir -p "${LOG_DIR}"
 
@@ -54,10 +54,10 @@ echo $! > "${PID_FILE}"
 echo "Started pid=$(cat "${PID_FILE}")"
 echo "Log: ${LOG_FILE}"
 echo "Outputs:"
-echo "  ${PROJECT_DIR}/sft_data/real_test1.jsonl  # random"
-echo "  ${PROJECT_DIR}/sft_data/real_test2.jsonl  # HIV"
-echo "  ${PROJECT_DIR}/sft_data/real_test3.jsonl  # heart"
+echo "  ${PROJECT_DIR}/sft_data/heldout_reviews1.jsonl  # random"
+echo "  ${PROJECT_DIR}/sft_data/heldout_reviews2.jsonl  # HIV"
+echo "  ${PROJECT_DIR}/sft_data/heldout_reviews3.jsonl  # heart"
 echo "Progress dirs:"
-echo "  ${PROJECT_DIR}/reason_gen_real_test1"
-echo "  ${PROJECT_DIR}/reason_gen_real_test2"
-echo "  ${PROJECT_DIR}/reason_gen_real_test3"
+echo "  ${PROJECT_DIR}/reason_gen_heldout_reviews1"
+echo "  ${PROJECT_DIR}/reason_gen_heldout_reviews2"
+echo "  ${PROJECT_DIR}/reason_gen_heldout_reviews3"

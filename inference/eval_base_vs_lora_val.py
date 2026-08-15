@@ -318,7 +318,7 @@ def main() -> None:
         "--file-stem",
         type=str,
         default="val",
-        help="Output name infix, e.g. val or real_test",
+        help="Output name infix, e.g. val or heldout_reviews",
     )
     args = parser.parse_args()
 

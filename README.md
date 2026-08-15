@@ -42,6 +42,14 @@ python reason_generation/generate_reasons_gpt_oss.py \
   --out-dir reason_gen
 ```
 
+Held-out external reviews (random / HIV / heart):
+
+```bash
+bash reason_generation/start_heldout_reviews_reason_bg.sh
+```
+
+This writes `sft_data/heldout_reviews{1,2,3}.jsonl`.
+
 ### 2. Build SFT dataset
 
 ```bash

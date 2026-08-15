@@ -1,6 +1,6 @@
 """
 Generate gpt-oss-120b reasons for random/HIV/heart test CSVs, then build
-sft_data/real_test{1,2,3}.jsonl in the same format as test.jsonl.
+sft_data/heldout_reviews{1,2,3}.jsonl in the same format as test.jsonl.
 
 Runs the three sets sequentially so API rate limits stay stable.
 Resume-safe: reason generation skips idxs already present in progress.jsonl.
@@ -17,27 +17,27 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_DIR / "data"
 GEN_SCRIPT = Path(__file__).resolve().parent / "generate_reasons_gpt_oss.py"
-BUILD_SCRIPT = Path(__file__).resolve().parent / "build_real_test_jsonl.py"
+BUILD_SCRIPT = Path(__file__).resolve().parent / "build_heldout_reviews_jsonl.py"
 SFT_DIR = PROJECT_DIR / "sft_data"
 
 TASKS = [
     {
-        "name": "real_test1",
+        "name": "heldout_reviews1",
         "csv": DATA_DIR / "20240827_random_test_set.csv",
-        "reason_dir": PROJECT_DIR / "reason_gen_real_test1",
-        "out_jsonl": SFT_DIR / "real_test1.jsonl",
+        "reason_dir": PROJECT_DIR / "reason_gen_heldout_reviews1",
+        "out_jsonl": SFT_DIR / "heldout_reviews1.jsonl",
     },
     {
-        "name": "real_test2",
+        "name": "heldout_reviews2",
         "csv": DATA_DIR / "20240827_HIV_test_set.csv",
-        "reason_dir": PROJECT_DIR / "reason_gen_real_test2",
-        "out_jsonl": SFT_DIR / "real_test2.jsonl",
+        "reason_dir": PROJECT_DIR / "reason_gen_heldout_reviews2",
+        "out_jsonl": SFT_DIR / "heldout_reviews2.jsonl",
     },
     {
-        "name": "real_test3",
+        "name": "heldout_reviews3",
         "csv": DATA_DIR / "20240827_heart_test_set.csv",
-        "reason_dir": PROJECT_DIR / "reason_gen_real_test3",
-        "out_jsonl": SFT_DIR / "real_test3.jsonl",
+        "reason_dir": PROJECT_DIR / "reason_gen_heldout_reviews3",
+        "out_jsonl": SFT_DIR / "heldout_reviews3.jsonl",
     },
 ]
 
@@ -158,13 +158,13 @@ def process_task(task: dict, args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generate reasons and build real_test1/2/3.jsonl"
+        description="Generate reasons and build heldout_reviews1/2/3.jsonl"
     )
     parser.add_argument(
         "--only",
         type=str,
         default="",
-        help="Comma-separated subset: real_test1,real_test2,real_test3",
+        help="Comma-separated subset: heldout_reviews1,heldout_reviews2,heldout_reviews3",
     )
     parser.add_argument("--rps", type=float, default=5.0)
     parser.add_argument("--concurrency", type=int, default=2)
