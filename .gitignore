@@ -1,0 +1,22 @@
+# secrets
+api_key.txt
+github_key.txt
+.env
+*.pem
+
+# local data / models / outputs
+data/
+models/
+sft_data/
+sft_runs/
+reason_gen/
+reason_gen_*/
+results/
+packages/
+__pycache__/
+*.pyc
+*.pyo
+*.pid
+*.log
+.DS_Store
+nul
