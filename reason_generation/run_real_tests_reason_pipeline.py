@@ -14,10 +14,10 @@ import sys
 import time
 from pathlib import Path
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_DIR / "data"
-GEN_SCRIPT = PROJECT_DIR / "generate_reasons_gpt_oss.py"
-BUILD_SCRIPT = PROJECT_DIR / "build_real_test_jsonl.py"
+GEN_SCRIPT = Path(__file__).resolve().parent / "generate_reasons_gpt_oss.py"
+BUILD_SCRIPT = Path(__file__).resolve().parent / "build_real_test_jsonl.py"
 SFT_DIR = PROJECT_DIR / "sft_data"
 
 TASKS = [

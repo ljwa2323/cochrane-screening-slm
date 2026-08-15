@@ -6,11 +6,12 @@
 
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 OUT_DIR="${PROJECT_DIR}/reason_gen"
 LOG_DIR="${OUT_DIR}/logs"
 PID_FILE="${OUT_DIR}/reason_gen.pid"
-SCRIPT="${PROJECT_DIR}/generate_reasons_gpt_oss.py"
+SCRIPT="${SCRIPT_DIR}/generate_reasons_gpt_oss.py"
 
 mkdir -p "${LOG_DIR}"
 

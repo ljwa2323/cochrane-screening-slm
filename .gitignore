@@ -5,18 +5,21 @@ github_key.txt
 *.pem
 
 # local data / models / outputs
-data/
-models/
-sft_data/
-sft_runs/
+data/*
+!data/.gitkeep
+models/*
+!models/.gitkeep
+sft_data/*
+!sft_data/.gitkeep
+sft_runs/*
+!sft_runs/.gitkeep
 reason_gen/
 reason_gen_*/
-results/
-packages/
+results/*
+!results/.gitkeep
 __pycache__/
 *.pyc
 *.pyo
 *.pid
 *.log
 .DS_Store
-nul

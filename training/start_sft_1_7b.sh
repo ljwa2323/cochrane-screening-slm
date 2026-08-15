@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Launch Qwen3-8B LoRA SFT on 2 GPUs (background via nohup).
+# Launch Qwen3-1.7B LoRA SFT on 2 GPUs.
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUT_DIR="${PROJECT_DIR}/sft_runs/qwen3_8b_lora"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+OUT_DIR="${PROJECT_DIR}/sft_runs/qwen3_1_7b_lora"
 LOG_DIR="${OUT_DIR}/logs"
 PID_FILE="${OUT_DIR}/train.pid"
-SCRIPT="${PROJECT_DIR}/train_qwen3_lora.py"
+SCRIPT="${SCRIPT_DIR}/train_qwen3_lora.py"
 
 mkdir -p "${LOG_DIR}"
 
@@ -18,31 +19,25 @@ if [[ -f "${PID_FILE}" ]]; then
   fi
 fi
 
-if pgrep -f "train_qwen3_lora.py --model-path ${PROJECT_DIR}/models/Qwen3-8B" >/dev/null 2>&1; then
-  echo "Found existing Qwen3-8B training process; not starting another."
-  exit 1
-fi
+pkill -f "train_qwen3_lora.py" 2>/dev/null || true
+sleep 1
 
 TS="$(date +%Y%m%d_%H%M%S)"
 LOG_FILE="${LOG_DIR}/train_${TS}.log"
 
 cd "${PROJECT_DIR}"
-# 8B: keep per-device batch=1; global effective batch ~= 32
 nohup env PYTHONUNBUFFERED=1 torchrun --standalone --nproc_per_node=2 \
   "${SCRIPT}" \
-  --model-path "${PROJECT_DIR}/models/Qwen3-8B" \
+  --model-path "${PROJECT_DIR}/models/Qwen3-1.7B" \
   --train-file "${PROJECT_DIR}/sft_data/train.jsonl" \
   --val-file "${PROJECT_DIR}/sft_data/val.jsonl" \
   --output-dir "${OUT_DIR}" \
   --max-length 2048 \
-  --num-train-epochs 1 \
+  --num-train-epochs 2 \
   --learning-rate 2e-4 \
-  --per-device-train-batch-size 1 \
-  --per-device-eval-batch-size 1 \
-  --gradient-accumulation-steps 16 \
-  --eval-steps 2000 \
-  --save-steps 2000 \
-  --logging-steps 50 \
+  --per-device-train-batch-size 4 \
+  --per-device-eval-batch-size 4 \
+  --gradient-accumulation-steps 4 \
   "$@" \
   > "${LOG_FILE}" 2>&1 &
 

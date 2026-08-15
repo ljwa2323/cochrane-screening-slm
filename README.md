@@ -1,49 +1,21 @@
 # Cochrane Screening SLM
 
-Code for **reason generation**, **Qwen3 LoRA SFT**, and **inference/evaluation** for title/abstract screening of systematic reviews.
+Pipeline code for Cochrane-style title/abstract screening with small language models:
+reason generation, SFT data preparation, Qwen3 LoRA fine-tuning, and inference evaluation.
 
-Repository: https://github.com/ljwa2323/cochrane-screening-slm
-
-## Pipeline overview
-
-1. **Reason generation** (`generate_reasons_gpt_oss.py`)  
-   Call NVIDIA `openai/gpt-oss-120b` to write justifications for gold labels.
-2. **Build SFT data** (`build_sft_dataset.py`)  
-   Merge reasons with the screening CSV into chat-format `train.jsonl` / `val.jsonl` / `test.jsonl`.
-3. **LoRA fine-tuning** (`train_qwen3_lora.py`)  
-   Train Qwen3-1.7B / 4B / 8B adapters (assistant-token loss only).
-4. **Inference / eval** (`eval_base_vs_lora_val.py`)  
-   Compare base vs LoRA models; output label + reason JSON.
-
-## Layout
+## Repository layout
 
 ```
-.
-|-- generate_reasons_gpt_oss.py      # reason generation (API)
-|-- start_reason_gen_bg.sh
-|-- run_real_tests_reason_pipeline.py
-|-- start_real_tests_reason_bg.sh
-|-- build_real_test_jsonl.py
-|-- build_sft_dataset.py             # build train/val/test jsonl
-|-- make_test_strat10.py
-|-- make_val_strat10.py
-|-- train_qwen3_lora.py              # LoRA SFT
-|-- start_sft_1_7b.sh
-|-- start_sft_4b.sh
-|-- start_sft_8b.sh
-|-- eval_base_vs_lora_val.py         # main inference/eval
-|-- eval_qwen3_lora_90.py
-|-- test_qwen3_screening.py          # base-model smoke eval
-|-- start_eval_test_all.sh
-|-- start_eval_val_all.sh            # deprecated (refuses val as test)
-|-- requirements.txt
-|-- data/                            # place CSV inputs here (not shipped)
-|-- models/                          # place Qwen3 base models here
-|-- sft_data/                        # generated train/val/test jsonl
-|-- sft_runs/                        # LoRA adapter outputs
-|-- reason_gen/                      # reason generation checkpoints
-|-- results/                         # eval outputs
-|-- api_key.txt                      # NVIDIA API key (do not commit)
+reason_generation/   # generate screening reasons via API
+data_prep/           # build train/val/test chat jsonl
+training/            # LoRA SFT for Qwen3-1.7B / 4B / 8B
+inference/           # base vs LoRA screening evaluation
+data/                # place input CSVs here (not shipped)
+models/              # place Qwen3 base models here
+sft_data/            # generated SFT jsonl
+sft_runs/            # LoRA adapter outputs
+reason_gen/          # reason-generation checkpoints
+results/             # evaluation outputs
 ```
 
 ## Setup
@@ -52,47 +24,52 @@ Repository: https://github.com/ljwa2323/cochrane-screening-slm
 pip install -r requirements.txt
 ```
 
-Put your NVIDIA API key in `api_key.txt` (single line).  
+Put the NVIDIA API key in `api_key.txt` (single line).  
 Download Qwen3 base models into `models/Qwen3-1.7B`, `models/Qwen3-4B`, `models/Qwen3-8B`.  
-Place screening CSVs under `data/` (or pass `--input` / CLI paths).
+Place screening CSVs under `data/`.
 
 Expected CSV columns include: `Selection_criteria`, `Title`, `Abstract_clean`, `label`.
 
-## Quick start
+## Usage
 
-### 1) Generate reasons
+### 1. Reason generation
 
 ```bash
-bash start_reason_gen_bg.sh
+bash reason_generation/start_reason_gen_bg.sh
 # or
-python generate_reasons_gpt_oss.py --input data/20240827_dev_set.csv --out-dir reason_gen
+python reason_generation/generate_reasons_gpt_oss.py \
+  --input data/20240827_dev_set.csv \
+  --out-dir reason_gen
 ```
 
-### 2) Build SFT dataset
+### 2. Build SFT dataset
 
 ```bash
-python build_sft_dataset.py --csv data/20240827_dev_set.csv --progress reason_gen/progress.jsonl --out-dir sft_data
+python data_prep/build_sft_dataset.py \
+  --csv data/20240827_dev_set.csv \
+  --progress reason_gen/progress.jsonl \
+  --out-dir sft_data
 ```
 
-### 3) LoRA fine-tune
+### 3. LoRA fine-tuning
 
 ```bash
-bash start_sft_1_7b.sh
-bash start_sft_4b.sh
-bash start_sft_8b.sh
+bash training/start_sft_1_7b.sh
+bash training/start_sft_4b.sh
+bash training/start_sft_8b.sh
 ```
 
-### 4) Inference / evaluation
+### 4. Inference / evaluation
 
 ```bash
-python make_test_strat10.py
-bash start_eval_test_all.sh
+python data_prep/make_test_strat10.py
+bash inference/start_eval_test_all.sh
 ```
 
-Single-model eval example:
+Single-model example:
 
 ```bash
-python eval_base_vs_lora_val.py \
+python inference/eval_base_vs_lora_val.py \
   --val-file sft_data/test_strat10.jsonl \
   --base-model models/Qwen3-4B \
   --adapter sft_runs/qwen3_4b_lora \
@@ -105,6 +82,6 @@ python eval_base_vs_lora_val.py \
 
 ## Notes
 
-- Large artifacts (base models, full `sft_data`, LoRA weights, reason progress dumps) are **not** included in this repo.
-- `start_eval_val_all.sh` intentionally refuses to run; use the held-out test split via `start_eval_test_all.sh`.
+- Large artifacts (base models, full datasets, LoRA weights, progress dumps) are not included.
+- `inference/start_eval_val_all.sh` refuses to run; use the held-out test split instead.
 - Override the Python interpreter with `PYTHON=/path/to/python` when launching eval scripts.

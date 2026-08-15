@@ -13,7 +13,7 @@ import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 SAMPLE_PATH = PROJECT_DIR / "qwen2p5_7b_screening_90_sample.csv"
 RESULTS_DIR = PROJECT_DIR / "results"
 MODELS_DIR = PROJECT_DIR / "models"

@@ -3,7 +3,8 @@
 # Uses 2 GPUs in parallel: GPU0=1.7B then 8B; GPU1=4B.
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PY="${PYTHON:-python}"
 OUT_DIR="${PROJECT_DIR}/results/test_base_vs_lora_all"
 LOG_DIR="${OUT_DIR}/logs"
@@ -25,7 +26,7 @@ run_one () {
   local bs="$5"
   local logfile="${LOG_DIR}/${tag}.log"
   echo "[$(date '+%F %T')] START ${tag} on GPU ${gpu}" | tee -a "${logfile}"
-  CUDA_VISIBLE_DEVICES="${gpu}" "${PY}" "${PROJECT_DIR}/eval_base_vs_lora_val.py" \
+  CUDA_VISIBLE_DEVICES="${gpu}" "${PY}" "${SCRIPT_DIR}/eval_base_vs_lora_val.py" \
     --val-file "${TEST_FILE}" \
     --base-model "${base}" \
     --adapter "${adapter}" \

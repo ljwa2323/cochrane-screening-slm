@@ -22,7 +22,7 @@ from transformers import (
     set_seed,
 )
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 
 @dataclass

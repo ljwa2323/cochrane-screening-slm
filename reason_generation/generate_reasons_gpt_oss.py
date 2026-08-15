@@ -23,7 +23,7 @@ from pathlib import Path
 import pandas as pd
 from openai import AsyncOpenAI
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_INPUT = PROJECT_DIR / "data" / "20240827_dev_set.csv"
 DEFAULT_OUT_DIR = PROJECT_DIR / "reason_gen"
 DEFAULT_API_KEY_FILE = PROJECT_DIR / "api_key.txt"

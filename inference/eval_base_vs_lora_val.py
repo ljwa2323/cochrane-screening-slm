@@ -18,7 +18,7 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 VALID_LABELS = {"include", "exclude", "uncertain"}
 MAX_NEW_TOKENS = 256
 

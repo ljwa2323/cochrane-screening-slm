@@ -1,11 +1,8 @@
 """
-Build matched SFT dataset from reason_gen/progress.jsonl + dev_set.csv.
+Build a held-out test jsonl from a Chan CSV + gpt-oss reason progress file.
 
-Outputs under sft_data/:
-  - screening_sft_snapshot.csv / .jsonl  (necessary columns only)
-  - screening_sft_messages.jsonl        (full chat records)
-  - train.jsonl / val.jsonl             (stratified 90/10)
-  - manifest.json
+Output format matches sft_data/test.jsonl:
+  {"messages": [...], "row_id": int, "label": "include"|"exclude"|"uncertain"}
 """
 
 from __future__ import annotations
@@ -17,12 +14,8 @@ from collections import Counter
 from pathlib import Path
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
 
-PROJECT_DIR = Path(__file__).resolve().parent
-DEFAULT_CSV = PROJECT_DIR / "data" / "20240827_dev_set.csv"
-DEFAULT_PROGRESS = PROJECT_DIR / "reason_gen" / "progress.jsonl"
-DEFAULT_OUT_DIR = PROJECT_DIR / "sft_data"
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 SYSTEM_PROMPT = """You are an expert systematic reviewer performing title and abstract screening.
 Given the review Selection_criteria, the study Title, and the Abstract, decide whether the study should be included.
@@ -58,7 +51,7 @@ def safe_text(value) -> str:
     return str(value).strip()
 
 
-def load_reasons(progress_path: Path) -> dict[int, str]:
+def load_reasons(progress_path: Path) -> tuple[dict[int, str], int, int]:
     reasons: dict[int, str] = {}
     n_fail = 0
     n_lines = 0
@@ -103,12 +96,18 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--csv", type=str, default=str(DEFAULT_CSV))
-    parser.add_argument("--progress", type=str, default=str(DEFAULT_PROGRESS))
-    parser.add_argument("--out-dir", type=str, default=str(DEFAULT_OUT_DIR))
-    parser.add_argument("--val-ratio", type=float, default=0.1)
-    parser.add_argument("--seed", type=int, default=42)
+    parser = argparse.ArgumentParser(
+        description="Build real_test*.jsonl from CSV + reason progress"
+    )
+    parser.add_argument("--csv", type=str, required=True)
+    parser.add_argument("--progress", type=str, required=True)
+    parser.add_argument("--out-jsonl", type=str, required=True)
+    parser.add_argument(
+        "--manifest",
+        type=str,
+        default="",
+        help="Optional manifest path; default is <out-jsonl>_manifest.json",
+    )
     parser.add_argument(
         "--keep-missing-text",
         action="store_true",
@@ -116,20 +115,29 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    out_dir = Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = Path(args.csv)
+    progress_path = Path(args.progress)
+    out_jsonl = Path(args.out_jsonl)
+    manifest_path = (
+        Path(args.manifest)
+        if args.manifest
+        else out_jsonl.with_name(out_jsonl.stem + "_manifest.json")
+    )
 
-    print(f"Loading reasons from {args.progress}")
-    reasons, n_lines, n_fail = load_reasons(Path(args.progress))
+    print(f"Loading reasons from {progress_path}")
+    reasons, n_lines, n_fail = load_reasons(progress_path)
     print(f"progress lines={n_lines} fail_or_empty={n_fail} unique_ok={len(reasons)}")
 
-    print(f"Loading CSV from {args.csv}")
-    df = pd.read_csv(args.csv)
+    print(f"Loading CSV from {csv_path}")
+    df = pd.read_csv(csv_path)
     print(f"CSV rows={len(df)}")
 
-    records = []
+    message_rows: list[dict] = []
     skipped_missing = 0
+    skipped_no_reason = 0
     skipped_oob = 0
+    label_counts: Counter[str] = Counter()
+
     for idx, reason in sorted(reasons.items()):
         if idx < 0 or idx >= len(df):
             skipped_oob += 1
@@ -145,112 +153,57 @@ def main() -> None:
         label_text = label_to_text(label_num)
         unnamed = row.get("Unnamed: 0")
         row_id = int(unnamed) if unnamed is not None and not pd.isna(unnamed) else int(idx)
-        records.append(
-            {
-                "row_id": row_id,
-                "idx": int(idx),
-                "Selection_criteria": criteria,
-                "Title": title,
-                "Abstract_clean": abstract,
-                "label": label_text,
-                "label_numeric": label_num,
-                "reason": reason,
-            }
-        )
-
-    print(
-        f"Matched usable={len(records)} "
-        f"skipped_missing={skipped_missing} skipped_oob={skipped_oob}"
-    )
-    if not records:
-        raise SystemExit("No usable records.")
-
-    snap_df = pd.DataFrame(records)[
-        [
-            "row_id",
-            "Selection_criteria",
-            "Title",
-            "Abstract_clean",
-            "label",
-            "reason",
-        ]
-    ]
-    snap_csv = out_dir / "screening_sft_snapshot.csv"
-    snap_jsonl = out_dir / "screening_sft_snapshot.jsonl"
-    snap_df.to_csv(snap_csv, index=False)
-    write_jsonl(snap_jsonl, snap_df.to_dict(orient="records"))
-    print(f"Wrote {snap_csv}")
-    print(f"Wrote {snap_jsonl}")
-
-    message_rows = []
-    for rec in records:
-        assistant = build_assistant_content(rec["label_numeric"], rec["reason"])
         message_rows.append(
             {
                 "messages": [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {
                         "role": "user",
-                        "content": build_user_content(
-                            rec["Selection_criteria"],
-                            rec["Title"],
-                            rec["Abstract_clean"],
-                        ),
+                        "content": build_user_content(criteria, title, abstract),
                     },
-                    {"role": "assistant", "content": assistant},
+                    {
+                        "role": "assistant",
+                        "content": build_assistant_content(label_num, reason),
+                    },
                 ],
-                "row_id": rec["row_id"],
-                "label": rec["label"],
+                "row_id": row_id,
+                "label": label_text,
             }
         )
+        label_counts[label_text] += 1
 
-    all_msg_path = out_dir / "screening_sft_messages.jsonl"
-    write_jsonl(all_msg_path, message_rows)
-    print(f"Wrote {all_msg_path}")
+    # Count rows present in CSV but missing a usable reason.
+    for i in range(len(df)):
+        if i not in reasons:
+            skipped_no_reason += 1
 
-    labels = [r["label"] for r in message_rows]
-    train_rows, val_rows = train_test_split(
-        message_rows,
-        test_size=args.val_ratio,
-        random_state=args.seed,
-        stratify=labels,
+    out_jsonl.parent.mkdir(parents=True, exist_ok=True)
+    write_jsonl(out_jsonl, message_rows)
+    print(
+        f"Wrote {out_jsonl} n={len(message_rows)} "
+        f"skipped_missing={skipped_missing} skipped_no_reason={skipped_no_reason} "
+        f"skipped_oob={skipped_oob}"
     )
-    train_path = out_dir / "train.jsonl"
-    val_path = out_dir / "val.jsonl"
-    write_jsonl(train_path, train_rows)
-    write_jsonl(val_path, val_rows)
-    print(f"Wrote {train_path} n={len(train_rows)}")
-    print(f"Wrote {val_path} n={len(val_rows)}")
 
-    label_counts = Counter(snap_df["label"].tolist())
     manifest = {
         "created_at": time.time(),
         "created_at_iso": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "source_csv": str(args.csv),
-        "source_progress": str(args.progress),
+        "source_csv": str(csv_path),
+        "source_progress": str(progress_path),
         "progress_lines": n_lines,
         "progress_fail_or_empty": n_fail,
         "unique_ok_reasons": len(reasons),
-        "matched_usable": len(records),
+        "matched_usable": len(message_rows),
         "skipped_missing_text": skipped_missing,
+        "skipped_no_reason": skipped_no_reason,
         "skipped_oob": skipped_oob,
-        "train_n": len(train_rows),
-        "val_n": len(val_rows),
-        "val_ratio": args.val_ratio,
-        "seed": args.seed,
+        "test_n": len(message_rows),
         "label_mapping": {str(k): v for k, v in LABEL_TEXT.items()},
-        "label_counts": {str(k): int(v) for k, v in sorted(label_counts.items())},
-        "columns": [
-            "row_id",
-            "Selection_criteria",
-            "Title",
-            "Abstract_clean",
-            "label",
-            "reason",
-        ],
+        "label_counts": {k: int(v) for k, v in sorted(label_counts.items())},
     }
-    manifest_path = out_dir / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(f"Wrote {manifest_path}")
     print("Label counts:", dict(label_counts))
 

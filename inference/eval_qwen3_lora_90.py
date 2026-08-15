@@ -19,7 +19,7 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-PROJECT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 BASE_MODEL = PROJECT_DIR / "models" / "Qwen3-1.7B"
 DEFAULT_ADAPTER = PROJECT_DIR / "sft_runs" / "qwen3_1_7b_lora"
 RESULTS_DIR = PROJECT_DIR / "results"
